@@ -13,7 +13,7 @@ The problem always about who use it.
 ## Commands
 
 (player) number = 1, 2, 3, 4<br>
-(player) color = green, blue, red, yellow/orange
+(player) color = green, blue, red, yellow/orange<br>
 (player) color alias = g, b, r, y/o
 
 | Name      | Alias | Parameters                              | Description                        | Conditions     |
