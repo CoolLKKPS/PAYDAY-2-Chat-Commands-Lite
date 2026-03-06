@@ -1,6 +1,6 @@
 # PAYDAY 2 - Chat Commands Lite
 
-This is a rebalance version, i already was ~5 years modpack author and saw so many things, i against anyone who going to cheat the game, but i do can see some potential on this mod.
+This is a rebalance version, i already was ~5 years modpack author and saw so many things, i against anyone who going to cheat the game, but i do can see some potential on this mod.<br>
 The problem always about who use it.
 
 ## Installation
