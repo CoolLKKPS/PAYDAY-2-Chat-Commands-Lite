@@ -14,6 +14,7 @@ The problem always about who use it.
 
 (player) number = 1, 2, 3, 4<br>
 (player) color = green, blue, red, yellow/orange
+(player) color alias = g, b, r, y/o
 
 | Name      | Alias | Parameters                              | Description                        | Conditions     |
 |-----------|-------|-----------------------------------------|------------------------------------|----------------|
