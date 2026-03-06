@@ -1,9 +1,9 @@
 {
-    "name": "Chat Commands",
-    "description": "Chat Commands",
-    "author": "ChildOfSorrow",
-	"contact": "ChildOfSorrow",
-    "version": "1.0.3",
+    "name": "Chat Commands Lite",
+    "description": "Chat Commands Lite",
+    "author": "ChildOfSorrow, CoolLKK",
+	"contact": "CoolLKK",
+    "version": "1.0.4",
     "blt_version": 2,
     "persist_scripts": [
         {
