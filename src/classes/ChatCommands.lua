@@ -12,21 +12,6 @@ ChatCommands.colors = {
 }
 
 ChatCommands.commands = {
-    spawn = {
-        conditions = {
-            isInGame = true,
-            isHost = true
-        },
-        callback = function(parameters)
-            local count = ChatCommands.count(parameters)
-            if count ~= 0 then
-                ChatCommands.usage("spawn")
-                return
-            end
-            managers.network:session():spawn_players()
-        end,
-        help = ChatCommands.delimiter .. "spawn"
-    },
     restart = {
         conditions = {
             isInHeist = true,
@@ -42,33 +27,30 @@ ChatCommands.commands = {
         end,
         help = ChatCommands.delimiter .. "restart"
     },
-    tp = {
+    disconnect = {
         conditions = {
-            isInHeist = true,
-            IsNotInCustody = true
+            isHost = true
         },
         callback = function(parameters)
             local count = ChatCommands.count(parameters)
-            local rotation = managers.player:player_unit():camera():rotation()
-            if count == 1 then
-                local peer = ChatCommands.getPeer(parameters[1])
-                if not peer then
-                    ChatCommands.playerNotFound(parameters[1])
-                    return
-                end
-                local position = peer:unit():position()
-                managers.player:warp_to(position, rotation)
-            elseif count == 3 then
-                local x = tonumber(parameters[1]) or 0
-                local y = tonumber(parameters[2]) or 0
-                local z = tonumber(parameters[3]) or 0
-                local position = Vector3(x, y, z)
-                managers.player:warp_to(position, rotation)
-            else
-                ChatCommands.usage("tp")
+            if count ~= 1 then
+                ChatCommands.usage("disconnect")
+                return
             end
+            local peer = ChatCommands.getPeer(parameters[1])
+            if not peer then
+                ChatCommands.playerNotFound(parameters[1])
+                return
+            end
+            if ChatCommands.isPeerSelf(peer) then
+                ChatCommands.message("You cannot disconnect yourself", ChatCommands.colors.warning)
+                return
+            end
+            local session = managers.network:session()
+            session:send_to_peers("kick_peer", peer:id(), 1)
+            session:on_peer_kicked(peer, peer:id(), 1)
         end,
-        help = ChatCommands.delimiter .. "tp <number> | <color> | <x> <y> <z>"
+        help = ChatCommands.delimiter .. "disconnect <number> | <color>"
     },
     kick = {
         conditions = {
@@ -137,8 +119,12 @@ ChatCommands.commands = {
                 ChatCommands.playerNotFound(parameters[1])
                 return
             end
-            local url = "https://steamcommunity.com/profiles/" .. peer:user_id() .. "/stats/PAYDAY2"
-            Steam:overlay_activate("url", url)
+            if Steam then
+                local url = "https://steamcommunity.com/profiles/" .. peer:account_id() .. "/stats/PAYDAY2"
+                Steam:overlay_activate("url", url)
+            else
+                ChatCommands.message("Unavailable", ChatCommands.colors.warning)
+            end
         end,
         help = ChatCommands.delimiter .. "profile <number> | <color>"
     },
@@ -156,8 +142,12 @@ ChatCommands.commands = {
                 ChatCommands.playerNotFound(parameters[1])
                 return
             end
-            local url = "https://steamcommunity.com/profiles/" .. peer:user_id() .. "/?xml=1"
-            dohttpreq(url, ChatCommands.playtimeCallback)
+            if Steam then
+                local url = "http://steamcommunity.com/profiles/" .. peer:account_id() .. "/?l=english"
+                dohttpreq(url, ChatCommands.playtimeCallback)
+            else
+                ChatCommands.message("Unavailable", ChatCommands.colors.warning)
+            end
         end,
         help = ChatCommands.delimiter .. "playtime <number> | <color>"
     },
@@ -202,18 +192,18 @@ ChatCommands.commands = {
         end,
         help = ChatCommands.delimiter .. "mods <number> | <color>"
     },
-    exit = {
+    quit = {
         conditions = {
         },
         callback = function(parameters)
             local count = ChatCommands.count(parameters)
             if count ~= 0 then
-                ChatCommands.usage("exit")
+                ChatCommands.usage("quit")
                 return
             end
             os.exit()
         end,
-        help = ChatCommands.delimiter .. "exit"
+        help = ChatCommands.delimiter .. "quit"
     },
     help = {
         conditions = {
@@ -222,15 +212,14 @@ ChatCommands.commands = {
             local count = ChatCommands.count(parameters)
             if count == 0 then
                 local message = "\n"
-                message = message .. ChatCommands.commands["spawn"].help .. "\n"
                 message = message .. ChatCommands.commands["restart"].help .. "\n"
-                message = message .. ChatCommands.commands["tp"].help .. "\n"
+                message = message .. ChatCommands.commands["disconnect"].help .. "\n"
                 message = message .. ChatCommands.commands["kick"].help .. "\n"
                 message = message .. ChatCommands.commands["ban"].help .. "\n"
                 message = message .. ChatCommands.commands["profile"].help .. "\n"
                 message = message .. ChatCommands.commands["playtime"].help .. "\n"
                 message = message .. ChatCommands.commands["mods"].help .. "\n"
-                message = message .. ChatCommands.commands["exit"].help .. "\n"
+                message = message .. ChatCommands.commands["quit"].help .. "\n"
                 message = message .. ChatCommands.commands["help"].help
                 ChatCommands.message(message, ChatCommands.colors.info)
             elseif count == 1 then
@@ -248,14 +237,12 @@ ChatCommands.commands = {
 }
 
 ChatCommands.aliases = {
-    s = "spawn",
-    r = "restart",
-    k = "kick",
-    b = "ban",
     p = "profile",
     t = "playtime",
     m = "mods",
-    h = "help"
+    h = "help",
+    dc = "disconnect",
+    re = "restart"
 }
 
 function ChatCommands.execute(message)
@@ -330,10 +317,15 @@ end
 function ChatCommands.getPeer(value)
     local name = value
     local colors = {
+        g = 1,
         green = 1,
+        b = 2,
         blue = 2,
+        r = 3,
         red = 3,
+        y = 4,
         yellow = 4,
+        o = 4,
         orange = 4
     }
     local number = nil
@@ -354,7 +346,7 @@ function ChatCommands.playerNotFound(value)
 end
 
 function ChatCommands.isPeerSelf(peer)
-    return tostring(peer:user_id()) == tostring(Steam:userid())
+    return peer:id() == managers.network:session():local_peer():id()
 end
 
 function ChatCommands.playtimeCallback(data)
@@ -362,12 +354,22 @@ function ChatCommands.playtimeCallback(data)
         ChatCommands.message("Request failed", ChatCommands.colors.danger)
         return
     end
-    local hours = data:match("<mostPlayedGame>.-<gameLink>.-218620.-</gameLink>.-<hoursOnRecord>([%d,.]+)</hoursOnRecord>")
-    if hours then
-        local message = hours .. " hours"
-        ChatCommands.message(message, ChatCommands.colors.info)
+    local hours_played = "Playtime unavailable"
+    local div_tag = "<div class=\"game_info_details\">"
+    local start_pos = data:find(div_tag)
+    if start_pos then
+        local end_pos = data:match(div_tag .. '%s*([%d,.]+)%s*hrs on record')
+        if end_pos then
+            hours_played = end_pos .. " hours"
+        end
+    elseif data:find("profile_private_info") then
+        hours_played = "Private Profile"
+    elseif data:find("store.steampowered.com") then
+        hours_played = "Game Info Hidden"
+    end
+    if hours_played == "Playtime unavailable" then
+        ChatCommands.message(hours_played, ChatCommands.colors.warning)
     else
-        local message = "Playtime unavailable"
-        ChatCommands.message(message, ChatCommands.colors.warning)
+        ChatCommands.message(hours_played, ChatCommands.colors.info)
     end
 end
